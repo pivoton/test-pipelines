@@ -10,18 +10,19 @@ pipeline {
   stages {
 
     stage('Checkout project repo') {
-      steps {
-        dir('project') {
-          checkout([$class: 'GitSCM',
-            branches: [[name: '*/develop']],
-            userRemoteConfigs: [[
-              url: 'https://github.com/pivoton/oplever-controle.git',
-              credentialsId: 'github-https-pat'
-            ]]
-          ])
+        steps {
+            dir('project') {
+            deleteDir()
+            checkout([$class: 'GitSCM',
+                branches: [[name: '*/develop']],
+                userRemoteConfigs: [[
+                url: 'https://github.com/pivoton/oplever-controle.git',
+                credentialsId: 'github-fg-pat'
+                ]]
+            ])
+            }
         }
-      }
-    }
+        }
 
     stage('Build') {
       steps {
