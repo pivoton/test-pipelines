@@ -9,20 +9,29 @@ pipeline {
 
   stages {
 
-    stage('Checkout project repo') {
+    stage('Checkout project repo (manual)') {
         steps {
             dir('project') {
             deleteDir()
-            checkout([$class: 'GitSCM',
-                branches: [[name: '*/develop']],
-                userRemoteConfigs: [[
-                url: 'https://github.com/pivoton/oplever-controle.git',
-                credentialsId: 'github-fg-pat'
-                ]]
-            ])
+            withCredentials([usernamePassword(
+                credentialsId: 'github-fg-pat',   // of jouw echte ID
+                usernameVariable: 'GIT_USER',
+                passwordVariable: 'GIT_PAT'
+            )]) {
+                sh '''
+                set -euo pipefail
+                git init
+                git remote add origin https://github.com/pivoton/oplever-controle.git
+                git config --local credential.helper ""
+
+                AUTH="$(printf "%s:%s" "$GIT_USER" "$GIT_PAT" | base64 | tr -d '\\n')"
+                git -c http.extraHeader="Authorization: Basic $AUTH" fetch --depth 1 origin develop
+                git checkout -f FETCH_HEAD
+                '''
+            }
             }
         }
-        }
+    }
 
     stage('Build') {
       steps {
