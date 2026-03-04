@@ -43,10 +43,11 @@ pipeline {
         stage('Test') {
             steps {
                 dir('project') {
-                    sh '''
-            docker run -d --name "$CONTAINER_NAME" "$IMAGE_NAME" tail -f /dev/null
-            docker exec "$CONTAINER_NAME" sh -lc "npm ci && npm test"
-          '''
+                sh '''
+                    set -euxo pipefail
+                    # draai container en laat hem exit code teruggeven
+                    docker run --name "$CONTAINER_NAME" "$IMAGE_NAME"
+                '''
                 }
             }
         }
