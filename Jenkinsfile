@@ -2,6 +2,14 @@ pipeline {
   agent any
   options { timestamps() }
 
+  parameters {
+    choice(
+      name: 'TEST_ENV',
+      choices: ['(none)', 'prod', 'acc3', 'acc2'],
+      description: 'Voegt optioneel "--env <waarde>" toe aan pytest'
+    )
+  }
+
   environment {
     IMAGE_NAME     = "myapp:${BUILD_NUMBER}"
     CONTAINER_NAME = "myapp-tests-${BUILD_NUMBER}"
@@ -46,15 +54,17 @@ pipeline {
     stage('Test') {
       steps {
         dir('project') {
-          withCredentials([file(credentialsId: 'test-env-file', variable: 'ENV_FILE')]) {
-            sh '''
-              set -euxo pipefail
+          script {
+            // Bouw extra pytest args op basis van parameter
+            def extra = (params.TEST_ENV == '(none)') ? '' : "--env ${params.TEST_ENV}"
 
-              # draait tests met .env uit Jenkins secret file
+            // Let op: we geven pytest args mee ná de image naam (override CMD)
+            sh """
+              set -euxo pipefail
               docker run --name "$CONTAINER_NAME" \
-                --env-file "$ENV_FILE" \
-                "$IMAGE_NAME"
-            '''
+                "$IMAGE_NAME" \
+                pytest -n 6 --browser chromium ${extra}
+            """
           }
         }
       }
