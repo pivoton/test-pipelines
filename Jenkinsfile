@@ -11,6 +11,12 @@ pipeline {
       choices: ['(none)', 'prod', 'acc3', 'acc2'],
       description: 'Voeg optioneel "--env <omgeving>" toe aan pytest'
     )
+
+    string(
+      name: 'SITE',
+      defaultValue: '',
+      description: 'Optioneel: --site <waarde> (alleen gebruiken als TEST_ENV = (none))'
+    )
   }
 
   environment {
@@ -64,10 +70,20 @@ pipeline {
         dir('project') {
           script {
 
-            // bepaal of we een extra pytest argument moeten toevoegen
             def extraArg = ""
+
             if (params.TEST_ENV != '(none)') {
+
+              if (params.SITE?.trim()) {
+                error("Je kunt geen SITE gebruiken als TEST_ENV gekozen is.")
+              }
+
               extraArg = "--env ${params.TEST_ENV}"
+
+            } else if (params.SITE?.trim()) {
+
+              extraArg = "--site ${params.SITE}"
+
             }
 
             sh """
