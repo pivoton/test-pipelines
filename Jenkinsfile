@@ -1,12 +1,15 @@
 pipeline {
   agent any
-  options { timestamps() }
+
+  options {
+    timestamps()
+  }
 
   parameters {
     choice(
       name: 'TEST_ENV',
       choices: ['(none)', 'prod', 'acc3', 'acc2'],
-      description: 'Voegt optioneel "--env <waarde>" toe aan pytest'
+      description: 'Voeg optioneel "--env <omgeving>" toe aan pytest'
     )
   }
 
@@ -16,7 +19,8 @@ pipeline {
   }
 
   stages {
-    stage('Checkout project repo (manual)') {
+
+    stage('Checkout project repo') {
       steps {
         dir('project') {
           deleteDir()
@@ -27,12 +31,16 @@ pipeline {
           )]) {
             sh '''
               set -euo pipefail
+
               git init
               git remote add origin https://github.com/pivoton/oplever-controle.git
               git config --local credential.helper ""
 
               AUTH="$(printf "%s:%s" "$GIT_USER" "$GIT_PAT" | base64 | tr -d '\\n')"
-              git -c http.extraHeader="Authorization: Basic $AUTH" fetch --depth 1 origin develop
+
+              git -c http.extraHeader="Authorization: Basic $AUTH" \
+                  fetch --depth 1 origin develop
+
               git checkout -f FETCH_HEAD
             '''
           }
@@ -40,7 +48,7 @@ pipeline {
       }
     }
 
-    stage('Build') {
+    stage('Build Docker image') {
       steps {
         dir('project') {
           sh '''
@@ -51,19 +59,23 @@ pipeline {
       }
     }
 
-    stage('Test') {
+    stage('Run tests') {
       steps {
         dir('project') {
           script {
-            // Bouw extra pytest args op basis van parameter
-            def extra = (params.TEST_ENV == '(none)') ? '' : "--env ${params.TEST_ENV}"
 
-            // Let op: we geven pytest args mee ná de image naam (override CMD)
+            // bepaal of we een extra pytest argument moeten toevoegen
+            def extraArg = ""
+            if (params.TEST_ENV != '(none)') {
+              extraArg = "--env ${params.TEST_ENV}"
+            }
+
             sh """
               set -euxo pipefail
+
               docker run --name "$CONTAINER_NAME" \
                 "$IMAGE_NAME" \
-                pytest -n 6 --browser chromium ${extra}
+                pytest -n 6 --browser chromium ${extraArg}
             """
           }
         }
